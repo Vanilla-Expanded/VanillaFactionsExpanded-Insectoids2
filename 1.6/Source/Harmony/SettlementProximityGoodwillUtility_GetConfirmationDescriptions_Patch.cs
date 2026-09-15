@@ -8,7 +8,7 @@ namespace VFEInsectoids
     [HarmonyPatch(typeof(SettlementProximityGoodwillUtility), "GetConfirmationDescriptions")]
     public static class SettlementProximityGoodwillUtility_GetConfirmationDescriptions_Patch
     {
-        public static IEnumerable<string> Postfix(IEnumerable<string> result, PlanetTile tile)
+        public static IEnumerable<TaggedString> Postfix(IEnumerable<TaggedString> result, PlanetTile tile)
         {
             foreach (var item in result)
             {
