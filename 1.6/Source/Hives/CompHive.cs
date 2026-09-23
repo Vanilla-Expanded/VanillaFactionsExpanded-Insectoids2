@@ -132,21 +132,34 @@ namespace VFEInsectoids
                 }
             }
 
-            if (lord != null && lord.Map != parent.Map)
+            EnsureLord();
+        }
+
+        public void EnsureLord()
+        {
+            if (lord != null && lord.Map != parent.MapHeld)
             {
                 RemoveLord();
             }
-            if (insects.Count > 0 && lord is null)
+            if (lord is null && parent.Spawned)
             {
-                if (parent is Pawn pawn && pawn.GetLord() is Lord lord && lord.LordJob is LordJob_FormAndSendCaravan)
-                {
-                    return;
-                }
                 lord = LordMaker.MakeNewLord(parent.Faction, new LordJob_PlayerHive(parent), parent.Map);
-                lord.AddBuilding(parent as Building);
+                if (parent is Building building)
+                {
+                    lord.AddBuilding(building);
+                }
+            }
+            if (lord != null)
+            {
                 foreach (var insect in insects)
                 {
-                    lord.AddPawn(insect);
+                    var insectLord = insect.GetLord();
+                    if (insect.Spawned && insect.Map == parent.MapHeld && insectLord != lord
+                        && insectLord?.LordJob is not LordJob_FormAndSendCaravan)
+                    {
+                        insectLord?.RemovePawn(insect);
+                        lord.AddPawn(insect);
+                    }
                 }
             }
         }
@@ -185,6 +198,15 @@ namespace VFEInsectoids
             {
                 RemoveInsect(insect);
             }
+            if (lord != null)
+            {
+                RemoveLord();
+            }
+        }
+
+        public override void PostDeSpawn(Map map, DestroyMode mode = DestroyMode.Vanish)
+        {
+            base.PostDeSpawn(map);
             if (lord != null)
             {
                 RemoveLord();
@@ -245,11 +267,17 @@ namespace VFEInsectoids
 
         public void TrySpawnPawn(IntVec3 position, float age)
         {
+            TrySpawnPawn(position, age, parent.Map);
+        }
+
+        public void TrySpawnPawn(IntVec3 position, float age, Map map)
+        {
             PawnGenerationRequest request = new PawnGenerationRequest(chosenKind, parent.Faction);
             request.FixedBiologicalAge = age;
             var pawn = PawnGenerator.GeneratePawn(request);
             AddInsect(pawn);
-            GenSpawn.Spawn(pawn, position, parent.Map);
+            GenSpawn.Spawn(pawn, position, map);
+            EnsureLord();
             if (Props.spawnSound != null)
             {
                 Props.spawnSound.PlayOneShot(pawn);
@@ -281,7 +309,7 @@ namespace VFEInsectoids
         public void SpawnCocoon(Pawn insect)
         {
             var pos = insect.Position;
-            var cocoon = GenSpawn.Spawn(VFEI_DefOf.VFEI2_InsectoidCocoonHive, pos, parent.Map) 
+            var cocoon = GenSpawn.Spawn(VFEI_DefOf.VFEI2_InsectoidCocoonHive, pos, insect.Map)
                 as CocoonHive;
             insect.DeSpawn();
             cocoon.innerContainer.TryAdd(insect);
@@ -299,21 +327,8 @@ namespace VFEInsectoids
             hediff = insect.health.AddHediff(hediffDef) as Hediff_InsectType;
             hediff.hive = this.parent;
             insects.Add(insect);
-            var otherLord = insect.GetLord();
-            if (otherLord != null)
-            {
-                otherLord.RemovePawn(insect);
-            }
-            if (lord is not null)
-            {
-                lord.AddPawn(insect);
-            }
-            else
-            {
-                lord = LordMaker.MakeNewLord(parent.Faction, new LordJob_PlayerHive(parent), parent.Map);
-                lord.AddBuilding(parent as Building);
-                lord.AddPawn(insect);
-            }
+            insect.GetLord()?.RemovePawn(insect);
+            EnsureLord();
         }
 
         public void RemoveInsect(Pawn insect)

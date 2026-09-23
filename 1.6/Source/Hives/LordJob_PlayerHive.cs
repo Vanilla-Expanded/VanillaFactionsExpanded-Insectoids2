@@ -11,6 +11,8 @@ namespace VFEInsectoids
 
         public override bool KeepExistingWhileHasAnyBuilding => true;
 
+        public override bool ShouldExistWithoutPawns => true;
+
         public Thing hive;
 
         public LordJob_PlayerHive()

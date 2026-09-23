@@ -24,9 +24,7 @@ namespace VFEInsectoids
         private CompHive _compHive;
         public CompHive CompHive =>_compHive ??= hive?.TryGetComp<CompHive>();
         public abstract InsectType InsectType { get; }
-        public override bool ShouldRemove => CompHive is null || CompHive.parent.Destroyed 
-            || CompHive.parent.MapHeld != pawn.MapHeld && pawn.Spawned && 
-            pawn.GetLord().LordJob is not LordJob_FormAndSendCaravan;
+        public override bool ShouldRemove => CompHive is null || CompHive.parent.Destroyed;
 
         public override void PostRemoved()
         {
@@ -51,19 +49,36 @@ namespace VFEInsectoids
             base.Tick();
             if (pawn.IsHashIntervalTick(60))
             {
-                var lord = pawn.GetLord();
-                if (lord is null)
+                if (hive is Pawn pawnHive && pawnHive.GetLord() is Lord lord2
+                    && lord2.LordJob is LordJob_FormAndSendCaravan)
                 {
-                    CompHive.lord.AddPawn(pawn);
-                }
-                else if (hive is Pawn pawnHive && pawnHive.GetLord() is Lord lord2
-                    && lord2.LordJob is LordJob_FormAndSendCaravan lordCaravan)
-                {
-                    lord.RemovePawn(pawn);
-                    lord2.AddPawn(pawn);
-                    if (pawn.jobs.curDriver?.asleep == true)
+                    var lord = pawn.GetLord();
+                    if (lord != lord2)
                     {
-                        pawn.jobs.StopAll();
+                        lord?.RemovePawn(pawn);
+                        lord2.AddPawn(pawn);
+                        if (pawn.jobs.curDriver?.asleep == true)
+                        {
+                            pawn.jobs.StopAll();
+                        }
+                    }
+                }
+                else if (CompHive is { } compHive)
+                {
+                    if (pawn.MapHeld != null && pawn.MapHeld == compHive.parent.MapHeld)
+                    {
+                        compHive.EnsureLord();
+                        var lord = pawn.GetLord();
+                        if (compHive.lord != null && lord != compHive.lord
+                            && lord?.LordJob is not LordJob_FormAndSendCaravan)
+                        {
+                            lord?.RemovePawn(pawn);
+                            compHive.lord.AddPawn(pawn);
+                        }
+                    }
+                    else if (pawn.GetLord()?.LordJob is LordJob_PlayerHive)
+                    {
+                        pawn.GetLord().RemovePawn(pawn);
                     }
                 }
             }

@@ -46,7 +46,7 @@ namespace VFEInsectoids
             {
                 var comp = hive.TryGetComp<CompHive>();
                 TryRemoveInsect(comp, out var insectAge);
-                comp.TrySpawnPawn(Position, insectAge);
+                comp.TrySpawnPawn(Position, insectAge, Map);
                 FilthMaker.TryMakeFilth(Position, Map, ThingDefOf.Filth_Slime);
                 innerContainer.ClearAndDestroyContents();
                 this.Destroy();
